@@ -19,18 +19,36 @@
 #
 
 ::Chef::Recipe.send(:include, Powershell::Helper)
+::Chef::Recipe.send(:include, Windows::PackageList)
 
 # PowerShell 2.0 Download Page
 # http://support.microsoft.com/kb/968929/en-us
 
 case node['platform']
 when "windows"
-
-  unless powershell_installed?
-    # Windows Server 2008 R2 Core does not come
-    # with .NET or Powershell 2.0 enabled
-    if (win_version.windows_server_2008_r2? || win_version.windows_7?) && win_version.server_core?
-
+  unless powershell_installed?(node['powershell']['version'])  
+    if node['powershell']['version'] == '3.0'
+      windows_package "Microsoft .NET Framework 4 Extended" do
+        source 'http://download.microsoft.com/download/9/5/A/95A9616B-7A37-4AF6-BC36-D6EA96C8DAAE/dotNetFx40_Full_x86_x64.exe'
+        checksum "65e064258f2e418816b304f646ff9e87af101e4c9552ab064bb74d281c38659f"
+        installer_type :custom
+        options "/q /norestart"
+        action :install
+        not_if { installed_packages.include?("Microsoft .NET Framework 4.5") }
+      end
+  
+      windows_package "Microsoft Windows Management Framework 3.0 (KB2506143)" do
+        source node['powershell'][node['powershell']['version']]['url']
+        checksum node['powershell'][node['powershell']['version']]['checksum']
+        installer_type :custom
+        options "/quiet /norestart"
+        action :install
+        not_if { `wmic qfe where "HotFixID='KB2506143'" get HotFixId`.include?("KB2506143") }
+      end
+    elsif (win_version.windows_server_2008_r2? || win_version.windows_7?) && win_version.server_core?  
+      # Windows Server 2008 R2 Core does not come
+      # with .NET or Powershell 2.0 enabled
+    
       windows_feature "NetFx2-ServerCore" do
         action :install
       end
@@ -58,19 +76,19 @@ when "windows"
       end
 
       windows_package "Windows Management Framework Core" do
-        source node['powershell']['url']
-        checksum node['powershell']['checksum']
+        source node['powershell'][node['powershell']['version']]['url']
+        checksum node['powershell'][node['powershell']['version']]['checksum']
         installer_type :custom
         options "/quiet /norestart"
         action :install
       end
 
     else
-      Chef::Log.warn("PowerShell 2.0 is not supported on this version of Windows: #{node['platform_version']}")
+      Chef::Log.warn("PowerShell #{node['powershell']['version']} is not supported on this version of Windows: #{node['platform_version']}")
     end
   else
-    Chef::Log.info("PowerShell 2.0 is already installed/enabled.")
+    Chef::Log.info("PowerShell #{node['powershell']['version']} is already installed/enabled.")
   end
 else
-  Chef::Log.warn('PowerShell 2.0 can only be installed on the Windows platform.')
+  Chef::Log.warn("PowerShell #{node['powershell']['version']} can only be installed on the Windows platform.")
 end

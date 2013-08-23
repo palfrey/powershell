@@ -24,10 +24,10 @@ module Powershell
   module Helper
     include Chef::Mixin::ShellOut
 
-    def powershell_installed?
+    def powershell_installed?(version)
       begin
         cmd = shell_out("#{interpreter} -inputformat none  -Command \"& {Get-Host}\"")
-        cmd.stderr.empty? && (cmd.stdout =~ /Version\s*:\s*2.0/i)
+        cmd.stderr.empty? && (cmd.stdout =~ /Version\s*:\s*#{version}/i)
       rescue Errno::ENOENT
         false
       end
