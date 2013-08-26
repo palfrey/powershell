@@ -36,6 +36,11 @@ when "windows"
         action :install
         not_if { installed_packages.include?("Microsoft .NET Framework 4.5") }
       end
+
+      windows_reboot 60 do
+        reason 'Windows Management Framework reqires a reboot to complete'
+        action :nothing
+      end
   
       windows_package "Microsoft Windows Management Framework 3.0 (KB2506143)" do
         source node['powershell'][node['powershell']['version']]['url']
@@ -44,6 +49,7 @@ when "windows"
         options "/quiet /norestart"
         action :install
         not_if { `wmic qfe where "HotFixID='KB2506143'" get HotFixId`.include?("KB2506143") }
+        notifies :request, 'windows_reboot[60]', :immediately
       end
     elsif (win_version.windows_server_2008_r2? || win_version.windows_7?) && win_version.server_core?  
       # Windows Server 2008 R2 Core does not come
