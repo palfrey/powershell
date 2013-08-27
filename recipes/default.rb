@@ -24,6 +24,11 @@
 # PowerShell 2.0 Download Page
 # http://support.microsoft.com/kb/968929/en-us
 
+def hotfix_installed?(hotfixID)
+	cmd = powershell_out("get-hotfix -id #{hotfixID}")
+	cmd.stdout
+end
+
 case node['platform']
 when "windows"
   unless powershell_installed?(node['powershell']['version'])  
@@ -48,8 +53,8 @@ when "windows"
         installer_type :custom
         options "/quiet /norestart"
         action :install
-        not_if { `wmic qfe where "HotFixID='KB2506143'" get HotFixId`.include?("KB2506143") }
         notifies :request, 'windows_reboot[60]', :immediately
+        not_if { hotfix_installed?("KB2506143") }
       end
     elsif (win_version.windows_server_2008_r2? || win_version.windows_7?) && win_version.server_core?  
       # Windows Server 2008 R2 Core does not come
